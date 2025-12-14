@@ -10,6 +10,7 @@ from typing import List, Optional
 from projet.retriever import CSVDataRetriever
 from projet.cleaner import DataCleaner
 from projet.api import MeteostatDataRetriever, ToulouseMeteoAPIRetriever
+from projet.linked_list import WeatherStationLinkedList
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,36 @@ class WeatherApp:
             help="ISO 3166-1 alpha-2 country code (e.g., 'FR')",
         )
 
+        # Linked list stations command
+        stations_parser = subparsers.add_parser(
+            "stations", help="Display all stations in a linked list"
+        )
+        stations_parser.add_argument(
+            "--source",
+            choices=["toulouse", "meteo"],
+            default="toulouse",
+            help="Data source to fetch from (default: toulouse)",
+        )
+        stations_parser.add_argument(
+            "--verbose",
+            action="store_true",
+            help="Show detailed statistics for each station",
+        )
+        stations_parser.add_argument(
+            "--start",
+            help="Start date (YYYY-MM-DD, default: 30 days ago)",
+        )
+        stations_parser.add_argument(
+            "--end",
+            help="End date (YYYY-MM-DD, default: today)",
+        )
+        stations_parser.add_argument(
+            "--limit",
+            type=int,
+            default=100,
+            help="Maximum records per station (default: 100)",
+        )
+
         return parser
 
     def run(self, argv: Optional[List[str]] = None) -> int:
@@ -193,6 +224,8 @@ class WeatherApp:
                     return self._handle_meteo_coords(args)
                 elif args.meteo_command == "search":
                     return self._handle_meteo_search(args)
+            elif args.command == "stations":
+                return self._handle_stations(args)
         except Exception as exc:
             logger.error("Error: %s", exc)
             return 2
@@ -312,4 +345,63 @@ class WeatherApp:
         print("\n=== Stations Found ===")
         print(results.to_string())
         print(f"\nTotal: {len(results)} stations")
+        return 0
+
+    def _handle_stations(self, args) -> int:
+        """Handle stations linked list display command."""
+        stations_ll = WeatherStationLinkedList()
+
+        try:
+            if args.source == "toulouse":
+                # Fetch from Toulouse API - single station
+                retriever = ToulouseMeteoAPIRetriever()
+                df = retriever.fetch_observations(
+                    start_date=args.start,
+                    end_date=args.end,
+                    limit=args.limit,
+                )
+                stations_ll.add_station(
+                    "toulouse-parc-compans",
+                    "Toulouse - Parc Compans Cafarelli",
+                    df
+                )
+            else:
+                # Fetch from Meteostat - can be multiple stations
+                # For demo, fetch from a few French stations
+                retriever = MeteostatDataRetriever()
+                station_ids = ["10438", "10383"]  # Paris Orly and Le Bourget
+                
+                for station_id in station_ids:
+                    try:
+                        df = retriever.fetch_by_station(
+                            station_id,
+                            start_date=args.start,
+                            end_date=args.end,
+                        )
+                        station_info = retriever._get_station(station_id)
+                        station_name = station_info.name if station_info is not None else f"Station {station_id}"
+                        stations_ll.add_station(station_id, station_name, df)
+                    except Exception as e:
+                        logger.warning("Failed to fetch station %s: %s", station_id, e)
+                        continue
+
+        except Exception as exc:
+            logger.error("Failed to fetch stations: %s", exc)
+            return 2
+
+        if len(stations_ll) == 0:
+            print("No stations loaded.")
+            return 2
+
+        # Display all stations from linked list
+        stations_ll.display_all(verbose=args.verbose)
+        
+        # Show station list summary
+        print(f"\n{'='*60}")
+        print("LINKED LIST SUMMARY")
+        print(f"{'='*60}")
+        print(f"Total stations in list: {len(stations_ll)}\n")
+        for i, station in enumerate(stations_ll.list_stations(), 1):
+            print(f"{i}. {station}")
+
         return 0
