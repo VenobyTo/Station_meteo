@@ -32,7 +32,6 @@ wheels/
 .pytest_cache/
 .coverage
 htmlcov/
-tests/
 
 # IDEs
 .vscode/
@@ -56,3 +55,9 @@ Thumbs.db
 env/
 venv/
 ENV/
+
+# Examples (ignore generated or demo example scripts)
+*_examples.py
+examples.py
+demo_*.py
+projet/patterns/patterns_examples.py
