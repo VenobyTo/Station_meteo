@@ -22,20 +22,20 @@ projet/
 tests/
 ├── __init__.py
 ├── conftest.py       # pytest configuration
-└── test_csv_retriever.py  # Unit tests
+└── test_*.py         # Unit tests
 ```
 
 ## Installation
 
 Install in development mode:
 
-```bash
+```powershell
 pip install -e .
 ```
 
 Or with dev dependencies:
 
-```bash
+```powershell
 pip install -e ".[dev]"
 ```
 
@@ -50,39 +50,32 @@ from projet.cleaner import DataCleaner
 cleaner = DataCleaner(tz="Europe/Paris")
 retriever = CSVDataRetriever(cleaner)
 df = retriever.fetch("data.csv")
-print(df)
+print(df.head())
 ```
 
 ### From command line
 
-```bash
+```powershell
 # Using python -m
-python -m projet path/to/file.csv --tz "Europe/Paris" --sample 10
+python -m projet csv path/to/file.csv --tz "Europe/Paris" --sample 10
 
-# Or directly
-station-meteo path/to/file.csv
+# Example: list stations using bundled filename
+python -m projet stations --source toulouse --limit 10
 ```
 
-## Running Tests
+## Design Patterns Used
 
-```bash
-pytest tests/
-pytest tests/ -v  # verbose
-pytest tests/ --cov=projet  # with coverage
-```
-
-## Clean Code Principles Applied
-
-- ✅ Small, single-responsibility classes
-- ✅ Type hints throughout
-- ✅ Comprehensive docstrings
-- ✅ Separation of concerns (retrieval, cleaning, CLI)
-- ✅ Dependency injection
-- ✅ No module-level side effects
-- ✅ Testable design
+- **Manager pattern**: `ConfigurationManager` in `projet/config.py` centralizes config lifecycle.
+- **Factory/Provider pattern**: Retriever classes in `projet/retriever.py` provide data from different sources.
+- **Strategy / Dependency Injection**: `DataCleaner` injected into `CSVDataRetriever` to allow different cleaning strategies.
 
 ## Requirements
 
 - Python >= 3.10
 - pandas >= 1.3
 - pyarrow >= 6.0.0
+
+## Next steps / Optional checks
+
+- Run `pylint` or `ruff` for linting and style enforcement (not required here but recommended).
+- Add CI workflow to run tests and linters automatically on push.
